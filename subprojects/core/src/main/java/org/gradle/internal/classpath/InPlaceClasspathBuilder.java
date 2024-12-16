@@ -157,7 +157,10 @@ public class InPlaceClasspathBuilder implements ClasspathBuilder {
 
         @Override
         public void put(String name, byte[] content, CompressionMethod compressionMethod) throws IOException {
-            File target = new File(baseDir, name);
+            File target = new File(baseDir, name).getCanonicalFile();
+            if (!target.toPath().startsWith(baseDir.toPath())) {
+                throw new IllegalArgumentException("Invalid entry name: " + name);
+            }
             if (target.exists()) {
                 throw new IllegalArgumentException("Duplicate entry " + name);
             }
