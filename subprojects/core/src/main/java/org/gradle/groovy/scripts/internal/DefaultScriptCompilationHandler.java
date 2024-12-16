@@ -17,6 +17,8 @@
 package org.gradle.groovy.scripts.internal;
 
 import groovy.lang.GroovyClassLoader;
+import org.codehaus.groovy.control.customizers.SecureASTCustomizer;
+import java.util.Arrays;
 import groovy.lang.GroovyCodeSource;
 import groovy.lang.GroovyResourceLoader;
 import groovy.lang.Script;
@@ -132,24 +134,13 @@ public class DefaultScriptCompilationHandler implements ScriptCompilationHandler
 
         final EmptyScriptDetector emptyScriptDetector = new EmptyScriptDetector();
         final PackageStatementDetector packageDetector = new PackageStatementDetector();
-        GroovyClassLoader groovyClassLoader = new GroovyClassLoader(classLoader, configuration, false) {
-            @Override
-            protected CompilationUnit createCompilationUnit(
-                CompilerConfiguration compilerConfiguration,
-                CodeSource codeSource
-            ) {
-
-                CompilationUnit compilationUnit = new CustomCompilationUnit(compilerConfiguration, codeSource, customVerifier, this, simpleNameToFQN);
-
-                if (transformer != null) {
-                    transformer.register(compilationUnit);
-                }
-
-                compilationUnit.addPhaseOperation(packageDetector, Phases.CANONICALIZATION);
-                compilationUnit.addPhaseOperation(emptyScriptDetector, Phases.CANONICALIZATION);
-                return compilationUnit;
-            }
-        };
+        GroovyClassLoader groovyClassLoader = new GroovyClassLoader(classLoader, configuration, false);
+        SecureASTCustomizer secureASTCustomizer = new SecureASTCustomizer();
+        secureASTCustomizer.setClosuresAllowed(false);
+        secureASTCustomizer.setMethodDefinitionAllowed(false);
+        secureASTCustomizer.setImportsWhitelist(Arrays.asList("java.lang.*", "java.util.*"));
+        secureASTCustomizer.setStarImportsWhitelist(Arrays.asList("java.lang", "java.util"));
+        groovyClassLoader.getConfiguration().addCompilationCustomizers(secureASTCustomizer);
 
         groovyClassLoader.setResourceLoader(NO_OP_GROOVY_RESOURCE_LOADER);
         String scriptText = source.getResource().getText();
