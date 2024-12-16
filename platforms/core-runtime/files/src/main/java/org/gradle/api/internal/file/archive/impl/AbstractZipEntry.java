@@ -40,7 +40,11 @@ abstract class AbstractZipEntry implements ZipEntry {
 
     @Override
     public String getName() {
-        return entry.getName();
+        String name = entry.getName();
+        if (name.contains("..") || name.startsWith("/") || name.startsWith("\\")) {
+            throw new IllegalArgumentException("Invalid entry name: " + name);
+        }
+        return name;
     }
 
     @Override
