@@ -28,7 +28,7 @@ import org.gradle.util.Path;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Paths;
-import java.util.Map;
+import java.util.List;
 
 final class GenericPageRenderer extends TabbedPageRenderer<TestTreeModel> {
     private static final URL STYLE_URL = Resources.getResource(GenericPageRenderer.class, "style.css");
@@ -51,13 +51,13 @@ final class GenericPageRenderer extends TabbedPageRenderer<TestTreeModel> {
         return url.substring(0, url.length() - 1);
     }
 
-    private final Map<String, SerializableTestResultStore.OutputReader> outputReaders;
-    private final Map<String, String> rootDisplayNames;
+    private final List<SerializableTestResultStore.OutputReader> outputReaders;
+    private final List<String> rootDisplayNames;
     private final MetadataRendererRegistry metadataRendererRegistry;
 
     GenericPageRenderer(
-        Map<String, SerializableTestResultStore.OutputReader> outputReaders,
-        Map<String, String> rootDisplayNames,
+        List<SerializableTestResultStore.OutputReader> outputReaders,
+        List<String> rootDisplayNames,
         MetadataRendererRegistry metadataRendererRegistry
     ) {
         this.outputReaders = outputReaders;
@@ -111,22 +111,23 @@ final class GenericPageRenderer extends TabbedPageRenderer<TestTreeModel> {
 
     @Override
     protected ReportRenderer<TestTreeModel, SimpleHtmlWriter> getContentRenderer() {
-        final TabsRenderer<TestTreeModel> tabsRenderer = new TabsRenderer<>();
-        getModel().getPerRootInfo().forEach((rootName, info) -> {
-            // If there is only one root, don't show the root name in the tab title, since it's just confusing.
-            String tabPrefix = rootDisplayNames.size() == 1 ? "" : ("'" + rootDisplayNames.get(rootName) + "' ");
-            tabsRenderer.add(tabPrefix + "summary", new PerRootTabRenderer.ForSummary(rootName));
-            SerializableTestResultStore.OutputReader outputReader = outputReaders.get(rootName);
+        TabsRenderer<TestTreeModel> rootTabsRenderer = new TabsRenderer<>();
+        getModel().getPerRootInfo().forEach((rootIndex, info) -> {
+            final TabsRenderer<TestTreeModel> tabsRenderer = new TabsRenderer<>();
+            tabsRenderer.add("summary", new PerRootTabRenderer.ForSummary(rootIndex));
+            SerializableTestResultStore.OutputReader outputReader = outputReaders.get(rootIndex);
             if (outputReader.hasOutput(info.getOutputId(), TestOutputEvent.Destination.StdOut)) {
-                tabsRenderer.add(tabPrefix + "standard output", new PerRootTabRenderer.ForOutput(rootName, outputReader, TestOutputEvent.Destination.StdOut));
+                tabsRenderer.add("standard output", new PerRootTabRenderer.ForOutput(rootIndex, outputReader, TestOutputEvent.Destination.StdOut));
             }
             if (outputReader.hasOutput(info.getOutputId(), TestOutputEvent.Destination.StdErr)) {
-                tabsRenderer.add(tabPrefix + "error output", new PerRootTabRenderer.ForOutput(rootName, outputReader, TestOutputEvent.Destination.StdErr));
+                tabsRenderer.add("error output", new PerRootTabRenderer.ForOutput(rootIndex, outputReader, TestOutputEvent.Destination.StdErr));
             }
             if (!info.getMetadatas().isEmpty()) {
-                tabsRenderer.add(tabPrefix + "metadata", new PerRootTabRenderer.ForMetadata(rootName, metadataRendererRegistry));
+                tabsRenderer.add("metadata", new PerRootTabRenderer.ForMetadata(rootIndex, metadataRendererRegistry));
             }
+
+            rootTabsRenderer.add(rootDisplayNames.get(rootIndex), tabsRenderer);
         });
-        return tabsRenderer;
+        return rootTabsRenderer;
     }
 }
